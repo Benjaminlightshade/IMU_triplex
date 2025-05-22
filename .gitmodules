@@ -1,0 +1,3 @@
+[submodule "external/libi2c"]
+	path = external/libi2c
+	url = https://github.com/amaork/libi2c.git
