@@ -34,9 +34,8 @@ add_library(test_lib STATIC
 )
 
 include_directories(test_lib PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/pkg1
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-
 
 
 
