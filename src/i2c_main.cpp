@@ -14,7 +14,7 @@ int main()
 
     imu_ICM20948 imu(0x68, "/dev/i2c-1");
     imu.identify();
-    imu.test_func();
+    imu.init_imu_i2c();
 
     while(true){
 

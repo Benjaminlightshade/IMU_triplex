@@ -21,8 +21,16 @@ imu_ICM20948::~imu_ICM20948() {
 }
 
 int imu_ICM20948::bank_select(unsigned char bank){
-    i2c_ioctl_write(&device, REG_BANK_SEL, &bank, sizeof(bank)); // Write to the bank select register
-    return 1;
+    int ret;
+    
+    ret = i2c_ioctl_write(&device, REG_BANK_SEL, &bank, sizeof(bank)); // Write to the bank select register
+    if (ret != sizeof(bank)) {
+        std::cerr << "Failed to select bank " << (int)bank << " for IMU." << std::endl;
+        return -1; // Error in writing to the register
+    }
+    
+    // Success
+    return 0;
 }
 
 int imu_ICM20948::identify(){
@@ -53,11 +61,30 @@ int imu_ICM20948::init_imu_dmp() {
 }
 
 int imu_ICM20948::init_imu_i2c(){
+    
+    unsigned char user_ctrl = 0b00000000; // Default value for USER_CTRL register
+    unsigned char pwr_mgmt_1 = 0b00000001; // Default value for PWR_MGMT_1 register
+    unsigned char pwr_mgmt_2 = 0b00000000; // Default value for PWR_MGMT_2 register
+
     std::cout << "Initializing IMU I2C..." << std::endl;
 
     bank_select(BANK_0); 
 
-    // TBC
+    // Setup the IMU registers to enable I2C communication
+    if(i2c_ioctl_write(&device, REG_USER_CTRL, &user_ctrl, 1) < 0) {
+        std::cerr << "Failed to write to USER_CTRL register." << std::endl;
+        return -1; // Error in writing to the register
+    }
+    if(i2c_ioctl_write(&device, REG_PWR_MGMT_1, &pwr_mgmt_1, 1) < 0) {
+        std::cerr << "Failed to write to PWR_MGMT_1 register." << std::endl;
+        return -1; // Error in writing to the register
+    }
+    if(i2c_ioctl_write(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1)){
+        std::cerr << "Failed to write to PWR_MGMT_2 register." << std::endl;
+        return -1; // Error in writing to the register
+    }
+
+    return 0;
 
 }
 
