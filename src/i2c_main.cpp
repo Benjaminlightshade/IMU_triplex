@@ -1,43 +1,94 @@
 #include <iostream>
 #include <thread>
+#include <iomanip> 
 
 #include "rclcpp/rclcpp.hpp"
+#include "sensor_msgs/msg/imu.hpp" 
 
 #include "test_lib.h"
 #include "i2c/i2c.h"
 #include "imu_ICM20948.h"
 
-
-int main()
+class ImuPublisherNode : public rclcpp::Node
 {
-    std::cout << "Starting IMU ICM20948 Example..." << std::endl;
+public:
+    ImuPublisherNode() : Node("imu_publisher_node")
+    {
+        // Initialize the IMU sensor
 
-    imu_ICM20948 imu(0x68, "/dev/i2c-1");
-    imu.identify();
-    imu.init_imu_i2c();
-
-    while(true){
-
-        imu_readings readings = imu.get_imu_readings();
+        imu_ = std::make_unique<imu_ICM20948>(0x68, "/dev/i2c-1");
+        imu_->identify();
+        imu_->init_imu_i2c();
+        RCLCPP_INFO(this->get_logger(), "IMU initialized successfully.");
         
-        // Process the readings as needed
-        std::cout << "Accel: (" << readings.accel_x << ", " << readings.accel_y << ", " << readings.accel_z << "), "
-                  << "Gyro: (" << readings.gyro_x << ", " << readings.gyro_y << ", " << readings.gyro_z << ")" 
-                  << std::endl;
+        // Create the publisher for IMU data
+        publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data", 10);
+        
+        // Create a timer to publish IMU readings periodically (e.g., every 100ms for 10Hz)
+        // Adjust the duration based on your desired publishing rate.
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(10), // Publish every 10ms 
+            std::bind(&ImuPublisherNode::publish_imu_data, this));
 
-        // Delay for a second
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));        
+        RCLCPP_INFO(this->get_logger(), "IMU publisher node started. Publishing to /imu/data topic.");
     }
- 
-    std::cout << "exiting" << std::endl;
 
-    return 0;
+    ~ImuPublisherNode()
+    {
+        RCLCPP_INFO(this->get_logger(), "Shutting down IMU publisher node.");
+    }
+
+private:
+    void publish_imu_data()
+    {
+        // Get the latest IMU readings
+        imu_readings readings = imu_->get_imu_readings();
+        
+        // Create a new IMU message
+        sensor_msgs::msg::Imu imu_msg;
+
+        // Set the header
+        imu_msg.header.stamp = this->now(); // Current ROS 2 time
+        imu_msg.header.frame_id = "imu_link"; // A descriptive frame ID for your IMU
+
+        // Populate linear acceleration (assuming readings are in m/s^2)
+        imu_msg.linear_acceleration.x = readings.accel_x;
+        imu_msg.linear_acceleration.y = readings.accel_y;
+        imu_msg.linear_acceleration.z = readings.accel_z;
+
+        // Populate angular velocity (assuming readings are in rad/s)
+        imu_msg.angular_velocity.x = readings.gyro_x;
+        imu_msg.angular_velocity.y = readings.gyro_y;
+        imu_msg.angular_velocity.z = readings.gyro_z;
+
+        // Orientation: If your IMU doesn't provide quaternions, you might leave these
+        // as zeros or use a separate sensor fusion library to estimate orientation.
+        // If orientation is not being reported, set the first element of the covariance to -1.
+        imu_msg.orientation.x = 0.0; 
+        imu_msg.orientation.y = 0.0;
+        imu_msg.orientation.z = 0.0;
+        imu_msg.orientation.w = 1.0; // Identity quaternion
+        imu_msg.orientation_covariance[0] = -1.0; // Indicates orientation is not reported
+
+        // Publish the IMU message
+        publisher_->publish(imu_msg);
+
+        // Optional: Log the readings for debugging
+        RCLCPP_INFO(this->get_logger(), 
+                    "Published Accel: (%.2f, %.2f, %.2f), Gyro: (%.2f, %.2f, %.2f)",
+                    readings.accel_x, readings.accel_y, readings.accel_z,
+                    readings.gyro_x, readings.gyro_y, readings.gyro_z);
+    }
+
+    rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr publisher_;
+    std::unique_ptr<imu_ICM20948> imu_; // IMU object as a member variable
+};
+
+int main(int argc, char * argv[])
+{
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<ImuPublisherNode>());
+  rclcpp::shutdown();
+  return 0;
 }
-
-/*
-Work
-1. Collect the i2c data
-2. Visualize it in RVIZ
-3. Do sensor fusion with multiple sensors 
-
-*/

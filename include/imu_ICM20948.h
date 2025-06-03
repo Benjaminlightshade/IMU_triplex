@@ -3,7 +3,6 @@
 
 #include "i2c/i2c.h"
 #include <iostream>
-#include <cstdint>
 
 // IMU reigister addresses - bank 1
 
@@ -51,15 +50,15 @@
 #define BANK_3 0x03
 
 struct  imu_readings{
-    int16_t accel_x;
-    int16_t accel_y;
-    int16_t accel_z;
-    int16_t gyro_x;
-    int16_t gyro_y;
-    int16_t gyro_z;
-    int16_t mag_x;
-    int16_t mag_y;
-    int16_t mag_z;
+    float accel_x;
+    float accel_y;
+    float accel_z;
+    float gyro_x;
+    float gyro_y;
+    float gyro_z;
+    float mag_x;
+    float mag_y;
+    float mag_z;
 };
 
 class imu_ICM20948{
@@ -76,6 +75,7 @@ class imu_ICM20948{
         int test_func();
     private:
         I2CDevice device;
+        
     
 };
 

@@ -9,8 +9,10 @@ imu_ICM20948::imu_ICM20948(unsigned char addr, const char *bus_name) {
     i2c_init_device(&device);
     device.flags = 0;
 
-    std::cout << "imu_ICM20948 constructed with address 0x" << std::hex << (int)addr
+    std::cout << std::hex;
+    std::cout << "imu_ICM20948 constructed with address 0x" << (int)addr
               << " on bus " << bus_name << std::endl;
+    std::cout << std::dec;
 }
 
 imu_ICM20948::~imu_ICM20948() {
@@ -96,19 +98,29 @@ imu_readings imu_ICM20948::get_imu_readings() {
 
     std::cout << "Read " << bytes << " bytes from IMU." << std::endl;
 
-    readings.accel_x = (int16_t)((buffer[0] << 8) | buffer[1]);
-    readings.accel_y = (int16_t)((buffer[2] << 8) | buffer[3]);
-    readings.accel_z = (int16_t)((buffer[4] << 8) | buffer[5]);
-    readings.gyro_x = (int16_t)((buffer[6] << 8) | buffer[7]);
-    readings.gyro_y = (int16_t)((buffer[8] << 8) | buffer[9]);
-    readings.gyro_z = (int16_t)((buffer[10] << 8) | buffer[11]);
-                       
+    int16_t raw_accelx, raw_accely, raw_accelz;
+    int16_t raw_gyrox, raw_gyroy, raw_gyroz;
+
+    raw_accelx = (buffer[0] << 8) | buffer[1];
+    raw_accely = (buffer[2] << 8) | buffer[3];
+    raw_accelz = (buffer[4] << 8) | buffer[5];
+    raw_gyrox = (buffer[6] << 8) | buffer[7];
+    raw_gyroy = (buffer[8] << 8) | buffer[9];
+    raw_gyroz = (buffer[10] << 8) | buffer[11];
+
+    readings.accel_x = (float)raw_accelx / 16384 * 9.81;
+    readings.accel_y = (float)raw_accely / 16384 * 9.81;
+    readings.accel_z = (float)raw_accelz / 16384 * 9.81;
+    readings.gyro_x = (float)raw_gyrox / 131;
+    readings.gyro_y = (float)raw_gyroy / 131;
+    readings.gyro_z = (float)raw_gyroz / 131;
+             
     return readings;
 }
 
 int imu_ICM20948::test_func() {
 
-    int8_t ret;
+    int ret;
 
     std::cout << "Checking accel X registers:" << std::endl;
     i2c_ioctl_read(&device, 0x2D, &ret, sizeof(ret)); 

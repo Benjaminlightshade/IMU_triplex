@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -43,7 +45,7 @@ target_include_directories(test_lib PUBLIC
 add_executable(i2c_main src/i2c_main.cpp)
 
 # Link i2c_main against its ROS 2 dependencies (rclcpp, std_msgs)
-ament_target_dependencies(i2c_main rclcpp std_msgs)
+ament_target_dependencies(i2c_main rclcpp std_msgs sensor_msgs)
 
 
 # Link i2c_main against the static libraries it uses (test_lib, libi2c_external)
@@ -61,6 +63,10 @@ install(TARGETS
   i2c_main
   DESTINATION lib/${PROJECT_NAME})
 
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
