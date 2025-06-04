@@ -62,8 +62,7 @@ def generate_launch_description():
         executable='ekf_node',
         name='ekf_filter_node',
         output='screen',
-        parameters=[
-            ekf_config_file,
+        parameters=[default_ekf_config_path,
             {'use_sim_time': use_sim_time}
         ]
     )

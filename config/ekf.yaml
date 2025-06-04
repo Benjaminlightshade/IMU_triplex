@@ -204,3 +204,11 @@ ekf_filter_node:
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1e-9, 0.0,
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1e-9
         ]
+
+        initial_state: [
+            0.0, 0.0, 0.0,  # x, y, z
+            0.0, 0.0, 0.0,  # roll, pitch, yaw
+            0.0, 0.0, 0.0,  # vx, vy, vz
+            0.0, 0.0, 0.0,  # vroll, vpitch, vyaw
+            0.0, 0.0, 0.0   # ax, ay, az (assuming gravity is in the z direction)
+        ]
