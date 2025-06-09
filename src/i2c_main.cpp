@@ -23,7 +23,7 @@ public:
         RCLCPP_INFO(this->get_logger(), "IMU initialized successfully.");
         
         // Create the publisher for IMU data
-        publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data", 10);
+        publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
         
         // Create a timer to publish IMU readings periodically (e.g., every 100ms for 10Hz)
         // Adjust the duration based on your desired publishing rate.
@@ -31,7 +31,7 @@ public:
             std::chrono::milliseconds(10), // Publish every 10ms 
             std::bind(&ImuPublisherNode::publish_imu_data, this));
 
-        RCLCPP_INFO(this->get_logger(), "IMU publisher node started. Publishing to /imu/data topic.");
+        RCLCPP_INFO(this->get_logger(), "IMU publisher node started. Publishing to /imu/data_raw topic.");
     }
 
     ~ImuPublisherNode()

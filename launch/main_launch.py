@@ -16,17 +16,10 @@ def generate_launch_description():
     # Create the launch description and populate
     ld = LaunchDescription()
 
+    
+    ### EKF node launch configuration.
+    
     """
-    Generate a launch description for the EKF node.
- 
-    This function creates and returns a LaunchDescription object that will start
-    the EKF node from the robot_localization package. The node is configured
-    using parameters from a YAML file.
- 
-    Returns:
-        LaunchDescription: A complete launch description for the EKF node
-    """
-
     # Constants for paths to different files and folders
     package_name = 'imu_triplex'
  
@@ -74,6 +67,10 @@ def generate_launch_description():
     # Add the actions
     ld.add_action(start_ekf_node_cmd)
 
+"""
+
+
+    
     # Launch main node
     main_node_cmd = Node(
         package='imu_triplex',
@@ -83,5 +80,16 @@ def generate_launch_description():
         parameters=[{'use_sim_time': use_sim_time}]
     )
     ld.add_action(main_node_cmd)
+
+
+
+    # Launch madgwick filter node
+    madgwick_node_cmd = Node(
+        package='imu_filter_madgwick',
+        executable='imu_filter_madgwick_node',
+        name='madgwick_filter_node',
+        output='screen',
+        parameters=[{'use_mag': false}]
+    )
 
     return ld

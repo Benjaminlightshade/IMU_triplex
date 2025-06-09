@@ -111,12 +111,47 @@ imu_readings imu_ICM20948::get_imu_readings() {
     readings.accel_x = (float)raw_accelx / 16384 * 9.81;
     readings.accel_y = (float)raw_accely / 16384 * 9.81;
     readings.accel_z = (float)raw_accelz / 16384 * 9.81;
+    // Gyro needs to be checked for the correct sensitivity 
     readings.gyro_x = (float)raw_gyrox / 131;
     readings.gyro_y = (float)raw_gyroy / 131;
     readings.gyro_z = (float)raw_gyroz / 131;
              
     return readings;
 }
+
+int imu_ICM20948::calibrate_gyro() {
+    // Placeholder for calibration logic
+    std::cout << "Calibrating IMU..." << std::endl;
+    
+
+    // Check if IMU is initialized
+    if (device.bus == -1) {
+        std::cerr << "IMU not initialized. Please initialize the IMU first." << std::endl;
+        return -1; // Error: IMU not initialized
+    }
+
+    // Read 100 samples from the IMU and calculate the average values
+    imu_readings avg_readings = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    for (int i = 0; i < 100; ++i) {
+        imu_readings readings = get_imu_readings();
+        avg_readings.gyro_x += readings.gyro_x;
+        avg_readings.gyro_y += readings.gyro_y;
+        avg_readings.gyro_z += readings.gyro_z;
+    }
+    avg_readings.accel_x /= 100;
+    avg_readings.accel_y /= 100;
+    avg_readings.accel_z /= 100;
+    avg_readings.gyro_x /= 100;
+    avg_readings.gyro_y /= 100;
+    avg_readings.gyro_z /= 100;
+
+    
+
+
+    
+    return 0; // Return 0 to indicate success
+}
+
 
 int imu_ICM20948::test_func() {
 
