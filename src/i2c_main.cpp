@@ -19,7 +19,7 @@ public:
 
         imu_ = std::make_unique<imu_ICM20948>(0x68, "/dev/i2c-1");
         imu_->identify();
-        imu_->init_imu_i2c();
+        imu_->init_imu();
         RCLCPP_INFO(this->get_logger(), "IMU initialized successfully.");
         
         // Create the publisher for IMU data
@@ -75,10 +75,10 @@ private:
         publisher_->publish(imu_msg);
 
         // Optional: Log the readings for debugging
-        RCLCPP_INFO(this->get_logger(), 
-                    "Published Accel: (%.2f, %.2f, %.2f), Gyro: (%.2f, %.2f, %.2f)",
-                    readings.accel_x, readings.accel_y, readings.accel_z,
-                    readings.gyro_x, readings.gyro_y, readings.gyro_z);
+        // RCLCPP_INFO(this->get_logger(), 
+        //             "Published Accel: (%.2f, %.2f, %.2f), Gyro: (%.2f, %.2f, %.2f)",
+        //             readings.accel_x, readings.accel_y, readings.accel_z,
+        //             readings.gyro_x, readings.gyro_y, readings.gyro_z);
     }
 
     rclcpp::TimerBase::SharedPtr timer_;

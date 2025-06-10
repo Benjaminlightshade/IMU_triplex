@@ -69,7 +69,6 @@ def generate_launch_description():
 
 """
 
-
     
     # Launch main node
     main_node_cmd = Node(
@@ -77,7 +76,7 @@ def generate_launch_description():
         executable='i2c_main',
         name='i2c_main_node',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}]
+        # parameters=[{'use_sim_time': True}]
     )
     ld.add_action(main_node_cmd)
 
@@ -89,7 +88,8 @@ def generate_launch_description():
         executable='imu_filter_madgwick_node',
         name='madgwick_filter_node',
         output='screen',
-        parameters=[{'use_mag': false}]
+        parameters=[{'use_mag': False}]
     )
+    ld.add_action(madgwick_node_cmd)
 
     return ld

@@ -9,6 +9,11 @@ imu_ICM20948::imu_ICM20948(unsigned char addr, const char *bus_name) {
     i2c_init_device(&device);
     device.flags = 0;
 
+    // Gyro calibration offsets
+    for (int i = 0; i < 6; ++i) {
+        calibration_offsets[i] = 0.0f; // Initialize gyro calibration offsets to zero
+    }
+
     std::cout << std::hex;
     std::cout << "imu_ICM20948 constructed with address 0x" << (int)addr
               << " on bus " << bus_name << std::endl;
@@ -53,6 +58,16 @@ int imu_ICM20948::identify(){
     }
 }
 
+
+int imu_ICM20948::init_imu(){
+
+    init_imu_i2c(); // Initialize the IMU I2C communication
+    calibrate_imu();
+
+    return 0;
+}
+
+
 int imu_ICM20948::init_imu_dmp() {
     
     // TBC
@@ -61,6 +76,7 @@ int imu_ICM20948::init_imu_dmp() {
     // Prepare the IMU to read quaternion data 
     return 0;
 }
+
 
 int imu_ICM20948::init_imu_i2c(){
     
@@ -81,6 +97,16 @@ int imu_ICM20948::init_imu_i2c(){
         std::cerr << "Failed to write to PWR_MGMT_1 register." << std::endl;
         return -1; // Error in writing to the register
     }
+
+    // Read current PWR_MGMT_2 register value
+    if(i2c_ioctl_read(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1) < 0 ){
+        std::cerr << "Failed to read from PWR_MGMT_2 register." << std::endl;
+        return -1; // Error in writing to the register
+    } 
+    
+    std::cout << "Current PWR_MGMT_2 value: " << static_cast<int>(pwr_mgmt_2) << std::endl;
+
+    // Todo : Find a way to set the bits without overwring the reserved bits
     if(i2c_ioctl_write(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1)){
         std::cerr << "Failed to write to PWR_MGMT_2 register." << std::endl;
         return -1; // Error in writing to the register
@@ -90,13 +116,14 @@ int imu_ICM20948::init_imu_i2c(){
 
 }
 
+
 imu_readings imu_ICM20948::get_imu_readings() {
     imu_readings readings;
     unsigned char buffer[12]; 
     int bytes;
     bytes = i2c_ioctl_read(&device, 0x2D, buffer, sizeof(buffer)); 
 
-    std::cout << "Read " << bytes << " bytes from IMU." << std::endl;
+    // std::cout << "Read " << bytes << " bytes from IMU." << std::endl;
 
     int16_t raw_accelx, raw_accely, raw_accelz;
     int16_t raw_gyrox, raw_gyroy, raw_gyroz;
@@ -108,18 +135,21 @@ imu_readings imu_ICM20948::get_imu_readings() {
     raw_gyroy = (buffer[8] << 8) | buffer[9];
     raw_gyroz = (buffer[10] << 8) | buffer[11];
 
-    readings.accel_x = (float)raw_accelx / 16384 * 9.81;
-    readings.accel_y = (float)raw_accely / 16384 * 9.81;
-    readings.accel_z = (float)raw_accelz / 16384 * 9.81;
-    // Gyro needs to be checked for the correct sensitivity 
-    readings.gyro_x = (float)raw_gyrox / 131;
-    readings.gyro_y = (float)raw_gyroy / 131;
-    readings.gyro_z = (float)raw_gyroz / 131;
+    // Default acceleromter sensitivity +/- 2g = 16384 LSB/g
+    readings.accel_x = ((float)raw_accelx / 16384 * 9.81) - calibration_offsets[0];
+    readings.accel_y = ((float)raw_accely / 16384 * 9.81) - calibration_offsets[1];
+    readings.accel_z = ((float)raw_accelz / 16384 * 9.81) - calibration_offsets[2];
+
+    // Default gyro sensitivity +/- 250dps = 131 LSB/deg/s, 57.27 deg/s = 1 rad/s
+    readings.gyro_x = ((float)raw_gyrox / 131 / 57.273) - calibration_offsets[3];
+    readings.gyro_y = ((float)raw_gyroy / 131 / 57.273) - calibration_offsets[4];
+    readings.gyro_z = ((float)raw_gyroz / 131 / 57.273) - calibration_offsets[5];
              
     return readings;
 }
 
-int imu_ICM20948::calibrate_gyro() {
+
+int imu_ICM20948::calibrate_imu() {
     // Placeholder for calibration logic
     std::cout << "Calibrating IMU..." << std::endl;
     
@@ -134,10 +164,15 @@ int imu_ICM20948::calibrate_gyro() {
     imu_readings avg_readings = {0, 0, 0, 0, 0, 0, 0, 0, 0};
     for (int i = 0; i < 100; ++i) {
         imu_readings readings = get_imu_readings();
+        avg_readings.accel_x += readings.accel_x;
+        avg_readings.accel_y += readings.accel_y;
+        avg_readings.accel_z += readings.accel_z;
         avg_readings.gyro_x += readings.gyro_x;
         avg_readings.gyro_y += readings.gyro_y;
         avg_readings.gyro_z += readings.gyro_z;
     }
+
+    // Calculate the average readings from the 100 samples
     avg_readings.accel_x /= 100;
     avg_readings.accel_y /= 100;
     avg_readings.accel_z /= 100;
@@ -145,16 +180,19 @@ int imu_ICM20948::calibrate_gyro() {
     avg_readings.gyro_y /= 100;
     avg_readings.gyro_z /= 100;
 
-    
+    // Store the difference from the expected values
+    calibration_offsets[0] = avg_readings.accel_x; 
+    calibration_offsets[1] = avg_readings.accel_y;
+    calibration_offsets[2] = avg_readings.accel_z - 9.81; // Adjust for gravity
+    calibration_offsets[3] = avg_readings.gyro_x;
+    calibration_offsets[4] = avg_readings.gyro_y;
+    calibration_offsets[5] = avg_readings.gyro_z;
 
-
-    
     return 0; // Return 0 to indicate success
 }
 
 
 int imu_ICM20948::test_func() {
-
     int ret;
 
     std::cout << "Checking accel X registers:" << std::endl;

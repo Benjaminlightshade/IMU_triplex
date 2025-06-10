@@ -68,13 +68,17 @@ class imu_ICM20948{
         ~imu_ICM20948();
         int bank_select(unsigned char bank);
         int identify();
+        int init_imu();
         int init_imu_dmp();
         int init_imu_i2c();
         imu_readings get_imu_readings();
+        int calibrate_imu();
 
         int test_func();
     private:
         I2CDevice device;
+        float calibration_offsets[6];
+        
         
     
 };
