@@ -79,6 +79,8 @@ int imu_ICM20948::init_imu_dmp() {
 
 
 int imu_ICM20948::init_imu_i2c(){
+
+    // Initialize the IMU I2C communication and the neccessary registers
     
     unsigned char user_ctrl = 0b00000000; // Default value for USER_CTRL register
     unsigned char pwr_mgmt_1 = 0b00000001; // Default value for PWR_MGMT_1 register
@@ -97,20 +99,14 @@ int imu_ICM20948::init_imu_i2c(){
         std::cerr << "Failed to write to PWR_MGMT_1 register." << std::endl;
         return -1; // Error in writing to the register
     }
-
-    // Read current PWR_MGMT_2 register value
-    if(i2c_ioctl_read(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1) < 0 ){
-        std::cerr << "Failed to read from PWR_MGMT_2 register." << std::endl;
-        return -1; // Error in writing to the register
-    } 
-    
-    std::cout << "Current PWR_MGMT_2 value: " << static_cast<int>(pwr_mgmt_2) << std::endl;
-
     // Todo : Find a way to set the bits without overwring the reserved bits
     if(i2c_ioctl_write(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1)){
         std::cerr << "Failed to write to PWR_MGMT_2 register." << std::endl;
         return -1; // Error in writing to the register
     }
+
+    // Setup the magnetometer
+    
 
     return 0;
 
