@@ -4,14 +4,16 @@
 #include "i2c/i2c.h"
 #include <iostream>
 
-// IMU reigister addresses - bank 1
-
-#define REG_WHO_AM_I    0x00
-#define REG_USER_CTRL   0x03
-#define REG_PWR_MGMT_1  0x06
-#define REG_PWR_MGMT_2  0x07
+// IMU register common address
 #define REG_BANK_SEL    0x7F
 
+// IMU reigister addresses - bank 1
+
+#define REG_WHO_AM_I        0x00
+#define REG_USER_CTRL       0x03
+#define REG_PWR_MGMT_1      0x06
+#define REG_PWR_MGMT_2      0x07
+#define REG_INT_PIN_CFG     0x0F
 #define REG_ACCEL_XOUT_H    0x2D
 #define REG_ACCEL_XOUT_L    0x2E
 #define REG_ACCEL_YOUT_H    0x2F
@@ -49,6 +51,21 @@
 #define BANK_2 0x02
 #define BANK_3 0x03
 
+#define REG_MAG_COMPANY_ID  0x00
+#define REG_MAG_DEVICE_ID   0x01
+#define REG_MAG_STATUS_1    0x10
+#define REG_MAG_HXL         0x11
+#define REG_MAG_HXH         0x12
+#define REG_MAG_HYL         0x13
+#define REG_MAG_HYH         0x14
+#define REG_MAG_HZL         0x15
+#define REG_MAG_HZH         0x16
+#define REG_MAG_STATUS_2    0x18
+#define REG_MAG_CNTRL_1     0x30
+#define REG_MAG_CNTRL_2     0x31
+#define REG_MAG_CNTRL_3     0x32
+
+
 struct  imu_readings{
     float accel_x;
     float accel_y;
@@ -77,6 +94,7 @@ class imu_ICM20948{
         int test_func();
     private:
         I2CDevice device;
+        I2CDevice device_mag;
         float calibration_offsets[6];
         
         

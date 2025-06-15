@@ -22,7 +22,9 @@ public:
         imu_->init_imu();
         RCLCPP_INFO(this->get_logger(), "IMU initialized successfully.");
         
-        // Create the publisher for IMU data
+        // Create the publisher for IMU data. 
+        // Topic gets the data and publishes every 10ms. 
+        // This is aligned with the IMU's output rate, specifically the magnetometer. 
         publisher_ = this->create_publisher<sensor_msgs::msg::Imu>("imu/data_raw", 10);
         
         // Create a timer to publish IMU readings periodically (e.g., every 100ms for 10Hz)
