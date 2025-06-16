@@ -30,14 +30,17 @@ target_include_directories(libi2c_external PUBLIC
 )
 
 
-# Define the test_lib static library
-add_library(test_lib STATIC
-    src/test_lib.cpp
+# Define the IMU library
+add_library(imu_ICM20948 STATIC
     src/imu_ICM20948.cpp
 )
 
-target_include_directories(test_lib PUBLIC
+target_include_directories(imu_ICM20948 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include 
+)
+
+target_link_libraries(imu_ICM20948
+    libi2c_external
 )
 
 
@@ -50,13 +53,13 @@ ament_target_dependencies(i2c_main rclcpp std_msgs sensor_msgs)
 
 # Link i2c_main against the static libraries it uses (test_lib, libi2c_external)
 # This is crucial for the linker to find the symbols defined in these libraries.
-target_link_libraries(test_lib PRIVATE
-  libi2c_external
-)
+# target_link_libraries(test_lib PRIVATE
+#   libi2c_external
+# )
 
 target_link_libraries(i2c_main
-    test_lib
     libi2c_external
+    imu_ICM20948
 )
 
 install(TARGETS
