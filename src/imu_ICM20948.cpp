@@ -94,6 +94,7 @@ int imu_ICM20948::init_imu_i2c(){
     unsigned char int_pin_cfg = 0b00000010; // Default value for INT_PIN_CFG register
     
     // Mag registers
+    unsigned char mag_reset = 0b00000001; // Bit to reset the magnetometer
     unsigned char whoami = 0;   // Who am I register used for identification and debugging
     unsigned char mag_ctrl2 = 0b00001000; // Default value for CNTRL2 register
 
@@ -118,6 +119,7 @@ int imu_ICM20948::init_imu_i2c(){
     i2c_ioctl_write(&device, REG_PWR_MGMT_2, &pwr_mgmt_2, 1);
 
     // Setup the magnetometer
+
     // Enable bypass mode to the magnetometer on the imu.
     if(i2c_ioctl_write(&device, REG_INT_PIN_CFG, &int_pin_cfg, 1) < 0) {
         std::cerr << "Failed to write to I2C_MST_CTRL register." << std::endl;
@@ -126,6 +128,15 @@ int imu_ICM20948::init_imu_i2c(){
 
     // Short delay to allow the serial by pass to take effect
     usleep(100); // Sleep for 100 microseconds
+
+    // Start the setup with a soft reset of the magnetometer
+    if(i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_3, &mag_reset, 1) < 0) {
+        std::cerr << "Failed to write to Magnetometer CNTRL3 register." << std::endl;
+        return -1; // Error in writing to the register
+    }
+
+    usleep(100); // Sleep for 100 microseconds
+
 
     // Communicate with the magnetometer registers 
 
@@ -150,15 +161,13 @@ int imu_ICM20948::init_imu_i2c(){
 imu_readings imu_ICM20948::get_imu_readings() {
     imu_readings readings;
     unsigned char buffer[12]; 
-    int bytes;
-    bytes = i2c_ioctl_read(&device, 0x2D, buffer, sizeof(buffer)); 
     unsigned char mag_buffer[9];
-
-    // std::cout << "Read " << bytes << " bytes from IMU." << std::endl;
-
     int16_t raw_accelx, raw_accely, raw_accelz;
     int16_t raw_gyrox, raw_gyroy, raw_gyroz;
     int16_t raw_magx, raw_magy, raw_magz;
+
+    i2c_ioctl_read(&device, 0x2D, buffer, sizeof(buffer)); 
+
 
     raw_accelx = (buffer[0] << 8) | buffer[1];
     raw_accely = (buffer[2] << 8) | buffer[3];
@@ -177,26 +186,32 @@ imu_readings imu_ICM20948::get_imu_readings() {
     readings.gyro_y = ((float)raw_gyroy / 131 / 57.273) - calibration_offsets[4];
     readings.gyro_z = ((float)raw_gyroz / 131 / 57.273) - calibration_offsets[5];
 
+
+    // Check if the magnetometer has a measurement ready by checking the DRDY register.
     // Read status1 and the 6 bytes of magnetometer data from the magnetometer registers
     // Reads up to the status2 register, which is required. 
-    if(i2c_ioctl_read(&device_mag, REG_MAG_STATUS_1, mag_buffer, sizeof(mag_buffer) <0)) {
+    if(i2c_ioctl_read(&device_mag, REG_MAG_STATUS_1, mag_buffer, sizeof(mag_buffer)) < 0) {
         std::cerr << "Failed to read from Magnetometer." << std::endl;
         return readings; // Return empty readings on error
     }
 
     // Check if the magnetometer has a measurement ready by checking the DRDY register.
-    if(mag_buffer[0] & 0b00000001 != 0x01){
+    // Otherwise, skip the magnetometer readings. 
+
+    // Todo: Figure out why the magnetometer status constantly returns empty. 
+    std::cout << "Magnetometer status: " << mag_buffer[0] << std::endl;
+    if((mag_buffer[0] & 0b00000001) == 0x01){
         std::cout << "Magnetometer measurement not ready." << std::endl;
-        return readings;
+        // return readings;
     }
     raw_magx = (mag_buffer[2] << 8) | mag_buffer[1];
     raw_magy = (mag_buffer[4] << 8) | mag_buffer[3];
     raw_magz = (mag_buffer[6] << 8) | mag_buffer[5];
-    
+
     // Magnetometer typical resolution 0.15uT/LSB
-    readings.mag_x = (float)raw_magx * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
-    readings.mag_y = (float)raw_magy * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
-    readings.mag_z = (float)raw_magz * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
+    readings.mag_x = ((float)raw_magx) * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
+    readings.mag_y = ((float)raw_magy) * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
+    readings.mag_z = ((float)raw_magz) * 0.15 / 1000000; // Default magnetometer sensitivity 16 LSB/uT
 
     return readings;
 }
