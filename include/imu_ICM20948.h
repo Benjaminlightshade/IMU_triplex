@@ -51,6 +51,8 @@
 #define BANK_2 0x02
 #define BANK_3 0x03
 
+// Magnetometer register addresses
+
 #define REG_MAG_COMPANY_ID  0x00
 #define REG_MAG_DEVICE_ID   0x01
 #define REG_MAG_STATUS_1    0x10
@@ -91,7 +93,6 @@ class imu_ICM20948{
         imu_readings get_imu_readings();
         int calibrate_imu();
 
-        int test_func();
     private:
         I2CDevice device;
         I2CDevice device_mag;

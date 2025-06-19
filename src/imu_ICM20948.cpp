@@ -96,7 +96,8 @@ int imu_ICM20948::init_imu_i2c(){
     // Mag registers
     unsigned char mag_reset = 0b00000001; // Bit to reset the magnetometer
     unsigned char whoami = 0;   // Who am I register used for identification and debugging
-    unsigned char mag_ctrl2 = 0b00001000; // Default value for CNTRL2 register
+    unsigned char mag_ctrl2 = 0b00001000; // CNTRL2, mode 4, 100Hz refresh rate. 
+    unsigned char mag_self_test = 0; // Self test mode for the magnetometer, not used in this case
 
 
     std::cout << "Initializing IMU I2C..." << std::endl;
@@ -129,6 +130,48 @@ int imu_ICM20948::init_imu_i2c(){
     // Short delay to allow the serial by pass to take effect
     usleep(100); // Sleep for 100 microseconds
 
+    //////////////////////////////////////////////////
+    /* Communicate with the magnetometer registers */
+    /////////////////////////////////////////////////
+
+    // Start the setup with a soft reset of the magnetometer
+    if(i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_3, &mag_reset, 1) < 0) {
+        std::cerr << "Failed to write to Magnetometer CNTRL3 register." << std::endl;
+        return -1; // Error in writing to the register
+    }
+
+
+    // For debugging purposes. 
+    // Set the magnetometer in self test mode instead
+    // Self test magnetometer, according to the datasheet.
+    // Power down mode
+    mag_self_test = 0; 
+    i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_2, &mag_self_test, 1); 
+
+    // Self test mode
+    mag_self_test = 0b00000001; 
+    i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_2, &mag_self_test, 1); 
+
+    // Check if data is ready
+    unsigned char status1 = 0;
+    unsigned char bytes_read[6];
+
+    while( (status1 & 0b00000001) != 0x01){
+        // Wait until the magnetometer data is ready
+        std::cout << "Waiting for magnetometer data to be ready..." << std::endl;
+        usleep(10);
+        i2c_ioctl_read(&device_mag, REG_MAG_STATUS_1, &status1, 1); 
+    }
+
+    // Display the magnetometer data. To check if the values are in the expected working range. 
+    std::cout << "Magnetometer data is ready." << std::endl;
+    i2c_ioctl_read(&device_mag, REG_MAG_HXL, bytes_read, 6); // Read 6 bytes of magnetometer data
+    std::cout << "Magnetometer self test data: ";
+    for(int i = 0; i < 6; i++) {
+        std::cout << std::hex << static_cast<int>(bytes_read[i]) << " ";
+    }
+    std::cout << std::dec << std::endl;
+    
     // Start the setup with a soft reset of the magnetometer
     if(i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_3, &mag_reset, 1) < 0) {
         std::cerr << "Failed to write to Magnetometer CNTRL3 register." << std::endl;
@@ -137,17 +180,14 @@ int imu_ICM20948::init_imu_i2c(){
 
     usleep(100); // Sleep for 100 microseconds
 
-
-    // Communicate with the magnetometer registers 
-
+    // Check the device ID of the magnetometer. Used for identification and debugging.
     if(i2c_ioctl_read(&device_mag, REG_MAG_DEVICE_ID, &whoami, 1) < 0){
         std::cerr << "Failed to read from Magnetometer WHO_AM_I register." << std::endl;
         return -1; // Error in reading from the register
     }
     std::cout << "Magnetometer WHO_AM_I: " << static_cast<int>(whoami) << std::endl;
 
-    // Setting for the magnetometer, using cntrl2 register
-
+    // Set up for the magnetometer, using cntrl2 register
     if(i2c_ioctl_write(&device_mag, REG_MAG_CNTRL_2, &mag_ctrl2, 1) < 0) {
         std::cerr << "Failed to write to Magnetometer CNTRL2 register." << std::endl;
         return -1; // Error in writing to the register
@@ -187,7 +227,6 @@ imu_readings imu_ICM20948::get_imu_readings() {
     readings.gyro_z = ((float)raw_gyroz / 131 / 57.273) - calibration_offsets[5];
 
 
-    // Check if the magnetometer has a measurement ready by checking the DRDY register.
     // Read status1 and the 6 bytes of magnetometer data from the magnetometer registers
     // Reads up to the status2 register, which is required. 
     if(i2c_ioctl_read(&device_mag, REG_MAG_STATUS_1, mag_buffer, sizeof(mag_buffer)) < 0) {
@@ -196,14 +235,19 @@ imu_readings imu_ICM20948::get_imu_readings() {
     }
 
     // Check if the magnetometer has a measurement ready by checking the DRDY register.
-    // Otherwise, skip the magnetometer readings. 
-
-    // Todo: Figure out why the magnetometer status constantly returns empty. 
-    std::cout << "Magnetometer status: " << mag_buffer[0] << std::endl;
-    if((mag_buffer[0] & 0b00000001) == 0x01){
-        std::cout << "Magnetometer measurement not ready." << std::endl;
-        // return readings;
+    // Retry up to 3 times if the data is not ready.
+    int retry_counter = 0;
+    while((mag_buffer[0] & 0b00000001) != 0x01){
+        // Wait until the magnetometer data is ready
+        retry_counter++;
+        if (retry_counter > 3) {
+            std::cerr << "Magnetometer read data not available." << std::endl;
+            return readings; // Return empty readings if data is not ready
+        }
+        usleep(10); // Sleep for 10 microseconds
+        i2c_ioctl_read(&device_mag, REG_MAG_STATUS_1, mag_buffer, sizeof(mag_buffer));
     }
+
     raw_magx = (mag_buffer[2] << 8) | mag_buffer[1];
     raw_magy = (mag_buffer[4] << 8) | mag_buffer[3];
     raw_magz = (mag_buffer[6] << 8) | mag_buffer[5];
@@ -259,23 +303,4 @@ int imu_ICM20948::calibrate_imu() {
     return 0; // Return 0 to indicate success
 }
 
-
-int imu_ICM20948::test_func() {
-    int ret;
-
-    std::cout << "Checking accel X registers:" << std::endl;
-    i2c_ioctl_read(&device, 0x2D, &ret, sizeof(ret)); 
-    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ret) << std::endl;
-    i2c_ioctl_read(&device, 0x2E, &ret, sizeof(ret)); 
-    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ret) << std::endl;
-
-    std::cout << "Checking user control registers" << std::endl;
-    i2c_ioctl_read(&device, 0x03, &ret, sizeof(ret)); 
-    std::cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ret) << std::endl;
-
-    std::cout << "End of test func" << std::endl;
-
-
-    return 0; // Placeholder for actual test functionality
-}
 

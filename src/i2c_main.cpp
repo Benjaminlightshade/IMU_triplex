@@ -32,7 +32,7 @@ public:
         // Topic gets the data and publishes every 10ms. 
         // This is aligned with the IMU's output rate, specifically the magnetometer. 
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(100), // Publish every 10ms 
+            std::chrono::milliseconds(10), // Publish every 10ms 
             std::bind(&ImuPublisherNode::publish_imu_data, this));
 
         RCLCPP_INFO(this->get_logger(), "IMU publisher node started. Publishing to /imu/data_raw topic.");
